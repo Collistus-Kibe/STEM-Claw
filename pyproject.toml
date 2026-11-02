@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stemclaw"
+version = "0.1.0"
+description = "A Skill-Driven STEM Research Agent for the Terminal IDE"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+authors = [
+    { name = "StemClaw Contributors" }
+]
+keywords = ["stem", "research", "agent", "llama", "terminal", "science"]
+dependencies = [
+    "rich>=13.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.27.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+llama = [
+    "llama-api-client>=0.1.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-httpx>=0.34.0",
+    "ruff>=0.8.0",
+]
+
+[project.scripts]
+stemclaw = "stemclaw.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["stemclaw*"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-p no:cacheprovider"

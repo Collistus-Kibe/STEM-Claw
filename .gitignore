@@ -1,0 +1,53 @@
+# StemClaw .gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# StemClaw local runtime state & secrets
+.stemclaw/.env
+.stemclaw/session.json
+.stemclaw/*.log
+.stemclaw/cache/
+
+# Testing & linting
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# IDE & OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
