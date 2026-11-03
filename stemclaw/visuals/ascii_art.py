@@ -22,15 +22,41 @@ STEMCLAW_LOGO = r"""
                    A Scientific Research Agent for the IDE
 """
 
-ASCII_ROBOT_MONITOR = r"""
-   .-------------------.
-   |   .-----------.   |
-   |   |  (o) (o)  |   |
-   |   |    ===    |   |
-   |   '-----------'   |
-   '-------------------'
-        [ STEM-BOT ]
+ASCII_ROBOT_MASCOT = r"""
+        ▲       ▲     
+     ╭──┴───────┴──╮  
+   c╭┤  ╭───────╮  ├╮ɔ
+   ╰┤│  │ ◉   ◉ │  │├╯
+    ││  │   ‿   │  ││ 
+    ╰┤  ╰───────╯  ├╯ 
+     ╰────┬───┬────╯  
+       [ STEM-BOT ]   
 """
+
+ASCII_ROBOT_MASCOT_SCANNING = r"""
+        ▲       ▲     
+     ╭──┴───────┴──╮  
+   c╭┤  ╭───────╮  ├╮ɔ
+   ╰┤│  │ ◎   ◎ │  │├╯
+    ││  │  ═══  │  ││ 
+    ╰┤  ╰───────╯  ├╯ 
+     ╰────┬───┬────╯  
+       [ STEM-BOT ]   
+"""
+
+ASCII_ROBOT_MASCOT_SUCCESS = r"""
+        ▲       ▲     
+     ╭──┴───────┴──╮  
+   c╭┤  ╭───────╮  ├╮ɔ
+   ╰┤│  │ ★   ★ │  │├╯
+    ││  │   ▽   │  ││ 
+    ╰┤  ╰───────╯  ├╯ 
+     ╰────┬───┬────╯  
+       [ STEM-BOT ]   
+"""
+
+ASCII_ROBOT_MONITOR = ASCII_ROBOT_MASCOT
+
 
 ASCII_DNA_HELIX = r"""
                [1] LIFE SCIENCES: PROCEDURAL DNA DOUBLE HELIX

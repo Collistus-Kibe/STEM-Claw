@@ -346,3 +346,4 @@ def print_keys_status_table(workspace_root: Optional[Path] = None) -> None:
     console.print(
         "[dim]To add any key, set it in .stemclaw/.env or type /keys configure <NAME> in the REPL.[/dim]\n"
     )
+
