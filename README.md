@@ -20,7 +20,7 @@
 
 ---
 
-## ⚡ Core Capabilities & Features
+##  CORE CAPABILITIES & FEATURES
 
 - **🎯 5 Specialization Loadouts**: Specializes context on demand across Life Sciences, Physical Sciences, Engineering & CS, Earth & Environmental, and Interdisciplinary Science.
 - **🤖 Native Meta Model API Integration**:
