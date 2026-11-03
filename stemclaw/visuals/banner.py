@@ -22,7 +22,6 @@ if sys.platform == "win32":
 from stemclaw.session.router import CategoryLoadout, STEMCategory
 from stemclaw.session.state import SessionState
 from stemclaw.visuals.ascii_art import (
-    ASCII_ROBOT_MONITOR,
     STEMCLAW_ASCII_LOGO,
     STEMCLAW_LOGO,
     get_category_ascii,
@@ -40,44 +39,8 @@ THEME_COLORS = {
 }
 
 
-def get_styled_mascot(state: str = "happy") -> Text:
-    """Return a vivid, multi-colored STEM-Bot robot mascot with waving claws and expressive screen."""
-    if state == "scanning":
-        eyes, mouth = "◎   ◎", " ═══ "
-        eye_color = "bold bright_cyan"
-    elif state == "success":
-        eyes, mouth = "★   ★", "  ▽  "
-        eye_color = "bold bright_yellow"
-    else:  # happy default
-        eyes, mouth = "◉   ◉", "  ‿  "
-        eye_color = "bold bright_yellow"
-
-    t = Text()
-    t.append("        ▲       ▲     \n", style="bold bright_yellow")
-    t.append("     ╭──┴───────┴──╮  \n", style="bold bright_cyan")
-    t.append("   c╭┤", style="bold bright_magenta")
-    t.append("  ╭───────╮", style="bold white")
-    t.append("  ├╮ɔ\n", style="bold bright_magenta")
-    t.append("   ╰┤│", style="bold bright_magenta")
-    t.append("  │ ", style="bold white")
-    t.append(eyes, style=eye_color)
-    t.append(" │", style="bold white")
-    t.append("  │├╯\n", style="bold bright_magenta")
-    t.append("    ││", style="bold bright_cyan")
-    t.append("  │ ", style="bold white")
-    t.append(mouth, style="bold bright_green")
-    t.append(" │", style="bold white")
-    t.append("  ││ \n", style="bold bright_cyan")
-    t.append("    ╰┤", style="bold bright_cyan")
-    t.append("  ╰───────╯", style="bold white")
-    t.append("  ├╯ \n", style="bold bright_cyan")
-    t.append("     ╰────┬───┬────╯  \n", style="bold bright_cyan")
-    t.append("       [ STEM-BOT ]   ", style="bold bright_white on navy_blue")
-    return t
-
-
-def print_banner(ascii_only: bool = False, mascot_state: str = "happy") -> None:
-    """Print the primary StemClaw welcome banner with robot mascot monitor and launch info."""
+def print_banner(ascii_only: bool = False) -> None:
+    """Print the clean primary StemClaw welcome banner without any mascot."""
     encoding = getattr(sys.stdout, "encoding", "utf-8") or "utf-8"
     term_width = getattr(console, "width", 80) or 80
     use_ascii = ascii_only or ("utf" not in encoding.lower()) or (term_width < 78)
@@ -98,25 +61,8 @@ def print_banner(ascii_only: bool = False, mascot_state: str = "happy") -> None:
             else:
                 styled_logo.append(line + "\n", style="bold cyan")
 
-    robot_text = get_styled_mascot(mascot_state)
-
-    if term_width >= 90:
-        banner_table = Table(
-            show_header=False,
-            show_edge=False,
-            box=None,
-            padding=(0, 1),
-            expand=True,
-        )
-        banner_table.add_column("logo", justify="left")
-        banner_table.add_column("robot", justify="right", width=26)
-        banner_table.add_row(styled_logo, robot_text)
-        content = banner_table
-    else:
-        content = styled_logo
-
     panel = Panel(
-        content,
+        styled_logo,
         title="[bold bright_white on navy_blue] STEMCLAW v0.1.0 [/bold bright_white on navy_blue]",
         subtitle="[bold cyan]Powered by Meta Model API[/bold cyan] [dim](muse-wonder / muse-spark) • Autonomous STEM Agent[/dim]",
         border_style="bright_blue",
