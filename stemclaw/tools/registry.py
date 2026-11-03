@@ -60,19 +60,6 @@ from stemclaw.tools.interdisciplinary import (
 )
 
 
-class EchoInput(BaseModel):
-    message: str = Field(..., description="Message string to echo back")
-
-
-class EchoTool(BaseTool):
-    name = "echo_tool"
-    description = "A diagnostic dummy tool that echoes back a message to verify tool calling pipeline."
-    input_model = EchoInput
-
-    def run(self, message: str) -> str:
-        return f"ECHO_RESPONSE: {message}"
-
-
 class ToolRegistry:
     """Registry that manages loaded tools and dispatches execution."""
 
@@ -155,7 +142,6 @@ class ToolRegistry:
         reg.register(PythonEvalTool())
         reg.register(DatasetInspectTool())
         reg.register(SearchLocalPapersTool())
-        reg.register(EchoTool())
 
         # Category 1: Life Sciences
         if category == STEMCategory.LIFE_SCIENCES:

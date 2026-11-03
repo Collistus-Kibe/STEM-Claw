@@ -167,54 +167,53 @@ def save_key_to_env(
 
 def check_meta_api_key_flow(
     workspace_root: Path,
-    force_mock: bool = False,
     interactive: bool = True,
 ) -> bool:
-    """Handle the foundation Meta Model API key check with smart [y/n] and masked input.
+    """Ensure a live Meta Model API key is present; prompt and save with masked input if missing.
 
     Returns:
-        bool: True if mock mode should be used, False if real Meta Model API is active.
+        bool: True if live Meta Model API key is active, False if launch should abort.
     """
-    if force_mock:
-        console.print(
-            "[bold yellow]⚡ Mock Model Adapter Active (Offline Mode)[/bold yellow]"
-        )
-        return True
-
     settings = get_settings(reload=True)
     if settings.effective_api_key:
         console.print(
-            f"[bold green]✔ Meta Model API: Configured[/bold green] "
-            f"[dim]({settings.effective_model} ready • dev.meta.ai)[/dim]"
+            f"[bold green]✔ Meta Model API: Connected[/bold green] "
+            f"[dim]({settings.effective_model} live • dev.meta.ai)[/dim]"
+        )
+        return True
+
+    if not interactive or not sys.stdin.isatty():
+        console.print(
+            "[bold red]Error: META_API_KEY is required for live reasoning and synthesis.[/bold red]\n"
+            "[yellow]Please configure META_API_KEY in .stemclaw/.env or environment.[/yellow]"
         )
         return False
 
-    if not interactive or not sys.stdin.isatty():
-        # Non-interactive automated turn without key -> fallback to mock
-        return True
-
     console.print(
-        "\n[bold yellow]Notice: Meta Model API key is not configured yet.[/bold yellow]"
+        "\n[bold yellow]Notice: Live Meta Model API key is not configured yet.[/bold yellow]"
     )
 
     try:
         choice = Prompt.ask(
             "[bold cyan]Do you have a Meta Model API key?[/bold cyan]",
             choices=["y", "n", "yes", "no"],
-            default="n",
+            default="y",
         )
     except (KeyboardInterrupt, EOFError):
-        console.print("\n[dim]Continuing in Mock / Offline mode.[/dim]")
-        return True
+        console.print("\n[dim]StemClaw launch aborted.[/dim]")
+        return False
 
     if choice.lower() in ("n", "no"):
         console.print(
-            "[bold yellow]ℹ Running in Mock / Offline adapter mode.[/bold yellow]"
+            "\n[bold red]StemClaw operates exclusively with live scientific data and requires an active Meta API key.[/bold red]"
         )
         console.print(
-            "[dim]You can acquire a free key at https://dev.meta.ai anytime or add it later with /keys.[/dim]\n"
+            "[yellow]You can acquire a free key at https://dev.meta.ai anytime.[/yellow]"
         )
-        return True
+        console.print(
+            "[dim]Save it as META_API_KEY in .stemclaw/.env and relaunch.[/dim]\n"
+        )
+        return False
 
     # User answered YES: prompt with masked input
     console.print(
@@ -223,21 +222,21 @@ def check_meta_api_key_flow(
     try:
         entered_key = read_masked_input("API Key: ")
     except (KeyboardInterrupt, EOFError):
-        console.print("\n[dim]No key entered. Continuing in Mock / Offline mode.[/dim]")
-        return True
+        console.print("\n[dim]No key entered. Aborting.[/dim]")
+        return False
 
     if entered_key:
         save_key_to_env("META_API_KEY", entered_key, workspace_root=workspace_root)
         get_settings(reload=True)
         console.print(
-            "[bold green]✔ Meta Model API key saved to .stemclaw/.env and activated![/bold green]\n"
-        )
-        return False
-    else:
-        console.print(
-            "[dim]Empty key provided. Continuing in Mock / Offline mode.[/dim]\n"
+            "[bold green]✔ Live Meta Model API key saved to .stemclaw/.env and activated![/bold green]\n"
         )
         return True
+    else:
+        console.print(
+            "[bold red]Error: No API key provided. Cannot connect to live model.[/bold red]\n"
+        )
+        return False
 
 
 def suggest_external_key_if_needed(

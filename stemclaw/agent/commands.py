@@ -4,7 +4,7 @@ Provides Claude Code-style slash commands:
   /help      - Display available slash commands and loaded tools
   /skills    - List loaded skills and procedural instructions
   /loadout   - Switch category loadout dynamically mid-session
-  /model     - Change model adapter (muse-wonder, muse-spark, mock, etc.)
+  /model     - Change live model (muse-wonder, muse-spark, Llama-4-Maverick)
   /export    - Export research session transcript to Markdown or LaTeX
   /clear     - Reset conversation history while preserving system prompt
   /status    - Display active session configuration and API keys
@@ -105,7 +105,7 @@ def _cmd_help(loop: "AgentLoop") -> None:
     table.add_row("/plan", "Inspect the roadmap and evidence locker of the active research task")
     table.add_row("/skills [name]", "List loaded domain skills or read full procedural guide for a skill")
     table.add_row("/loadout [1-5|name]", "Hot-swap active STEM category loadout mid-session")
-    table.add_row("/model [name]", "Switch active model (muse-wonder, muse-spark, mock)")
+    table.add_row("/model [name]", "Switch active live model (muse-wonder, muse-spark, Llama-4-Maverick)")
     table.add_row("/export [md|tex|bib] [file]", "Export session conversation and research report to disk")
     table.add_row("/clear", "Reset conversation history while preserving category loadout")
     table.add_row("/status", "Display session ID, active tools, repos, and API keys")
@@ -190,27 +190,27 @@ def _cmd_loadout(loop: "AgentLoop", category_str: str) -> None:
 
 
 def _cmd_model(loop: "AgentLoop", model_name: str) -> None:
-    """Switch active model adapter dynamically."""
+    """Switch active live model dynamically."""
     if not model_name:
-        console.print(f"Current model: [bold cyan]{loop.adapter.model_name}[/bold cyan]")
-        console.print("Usage: [bold]/model [muse-wonder | muse-spark | mock][/bold]")
+        console.print(f"Current live model: [bold cyan]{loop.adapter.model_name}[/bold cyan]")
+        console.print("Usage: [bold]/model [muse-wonder | muse-spark | Llama-4-Maverick-17B-128E-Instruct-FP8][/bold]")
         return
 
-    cleaned = model_name.strip().lower()
-    if cleaned in ("mock", "offline", "test"):
-        from stemclaw.model.mock_client import MockModelAdapter
-        loop.adapter = MockModelAdapter()
-        console.print("[yellow]Switched to offline MockModelAdapter.[/yellow]")
-    else:
-        from stemclaw.model.llama_client import LlamaModelAdapter
-        settings = get_settings()
-        api_key = settings.effective_api_key or "dummy_key"
-        loop.adapter = LlamaModelAdapter(
-            api_key=api_key,
-            model=model_name.strip(),
-            base_url=settings.effective_api_base,
-        )
-        console.print(f"[green]Switched active model to [bold]{model_name.strip()}[/bold][/green]")
+    from stemclaw.model.llama_client import LlamaModelAdapter
+    settings = get_settings()
+    api_key = settings.effective_api_key
+    if not api_key:
+        console.print("[bold red]Cannot switch model: META_API_KEY is not configured.[/bold red]")
+        console.print("[dim]Use /keys set META_API_KEY to configure your live key.[/dim]")
+        return
+
+    loop.adapter = LlamaModelAdapter(
+        api_key=api_key,
+        model=model_name.strip(),
+        fallback_model=settings.llama_fallback_model,
+        base_url=settings.effective_api_base,
+    )
+    console.print(f"[green]✔ Switched active live model to [bold]{model_name.strip()}[/bold][/green]")
 
 
 def _cmd_export(loop: "AgentLoop", export_format: str, filename: str) -> None:
@@ -297,7 +297,7 @@ def _cmd_status(loop: "AgentLoop") -> None:
     table.add_row("Active Model", loop.adapter.model_name)
     table.add_row("Active Tools", f"{len(loop.session.active_tools)} tools loaded")
     table.add_row("Active Skills", f"{len(loop.session.active_skills)} skills (8 max)")
-    table.add_row("Meta API Key", "[green]Configured[/green]" if settings.effective_api_key else "[yellow]Missing (offline mode)[/yellow]")
+    table.add_row("Meta API Key", "[bold green]Configured (Live)[/bold green]" if settings.effective_api_key else "[bold red]Not Configured[/bold red]")
     table.add_row("Workspace", loop.session.workspace_root)
 
     console.print(Panel(table, border_style="cyan"))

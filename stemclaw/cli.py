@@ -39,20 +39,20 @@ console = Console()
 
 def check_and_prompt_keys(
     session: SessionState,
-    force_mock: bool = False,
     interactive: bool = True,
 ) -> bool:
-    """Intelligently check and prompt for Meta API Key and surface category-specific optional keys.
+    """Intelligently check and prompt for live Meta API Key and surface category-specific optional keys.
 
     Returns:
-        bool: True if mock adapter should be used, False if real Meta API is active.
+        bool: True if live Meta API is ready to connect, False if key is missing/declined.
     """
     workspace_root = Path(session.workspace_root)
-    use_mock = check_meta_api_key_flow(
+    ready = check_meta_api_key_flow(
         workspace_root=workspace_root,
-        force_mock=force_mock,
         interactive=interactive,
     )
+    if not ready:
+        return False
 
     # Inform the user about relevant optional free keys for their active loadout
     settings = get_settings(reload=True)
@@ -68,7 +68,7 @@ def check_and_prompt_keys(
             f"(type /keys in session to configure)[/dim]"
         )
 
-    return use_mock
+    return True
 
 
 def initialize_environment(workspace_root: Path) -> None:
@@ -194,11 +194,6 @@ def main(argv: Optional[list] = None) -> int:
         help="Reset active session and prompt for category afresh",
     )
     parser.add_argument(
-        "--mock",
-        action="store_true",
-        help="Force mock model adapter (offline test mode)",
-    )
-    parser.add_argument(
         "-q",
         "--query",
         help="Run a single research turn non-interactively and exit",
@@ -250,14 +245,16 @@ def main(argv: Optional[list] = None) -> int:
     if args.no_repl:
         return 0
 
-    # Prompt for API keys with smart [y/n] and masked input
+    # Prompt for live Meta Model API key with smart [y/n] and masked input
     interactive = (not args.query and not args.no_repl)
-    use_mock = check_and_prompt_keys(session, force_mock=args.mock, interactive=interactive)
+    ready = check_and_prompt_keys(session, interactive=interactive)
+    if not ready:
+        return 1
 
     # Install scientific visual animation hooks for literature tool calls
     install_visual_hooks(get_hook_manager(), session.category, animate_in_tty=sys.stdout.isatty())
 
-    adapter = get_model_adapter(force_mock=use_mock)
+    adapter = get_model_adapter()
     loop = AgentLoop(session=session, adapter=adapter)
 
     # 1. Resume existing deep research task if requested
