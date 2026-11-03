@@ -123,30 +123,92 @@ def _get_windows_clipboard() -> str:
 
 
 def read_masked_input(prompt_text: str = "API Key: ") -> str:
-    """Read API key with full native paste support (Ctrl+V, Right-Click, Shift+Insert).
+    """Read API key with real-time asterisk masking ('*******') and full paste support.
 
-    Immediately masks the input with asterisks (*******) upon submission.
+    When the user types or pastes (via Ctrl+V, Right-Click, or Shift+Insert),
+    every single character is masked on the screen with '*' in real-time.
+    The raw secret key is never displayed in plain text.
     """
     sys.stdout.write(prompt_text)
     sys.stdout.flush()
 
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+
+            chars: list[str] = []
+            while True:
+                ch = msvcrt.getch()
+
+                # Enter submits
+                if ch in (b"\r", b"\n"):
+                    sys.stdout.write("\n")
+                    sys.stdout.flush()
+                    break
+
+                # Ctrl+C or Ctrl+Z aborts
+                elif ch in (b"\x03", b"\x1a"):
+                    sys.stdout.write("\n")
+                    sys.stdout.flush()
+                    raise KeyboardInterrupt()
+
+                # Ctrl+V (ASCII 22 = b'\x16'): Paste from Windows clipboard masked with '*'
+                elif ch == b"\x16":
+                    clip = _get_windows_clipboard()
+                    if clip:
+                        for c in clip:
+                            if c not in ("\r", "\n"):
+                                chars.append(c)
+                                sys.stdout.write("*")
+                        sys.stdout.flush()
+
+                # Backspace erases last character and its asterisk
+                elif ch == b"\x08":
+                    if chars:
+                        chars.pop()
+                        sys.stdout.write("\b \b")
+                        sys.stdout.flush()
+
+                # Extended keys prefix (arrow keys, function keys)
+                elif ch in (b"\x00", b"\xe0"):
+                    msvcrt.getch()  # consume scan code
+
+                # Normal typed or right-click pasted character
+                else:
+                    try:
+                        decoded = ch.decode("utf-8", errors="ignore")
+                        if decoded and decoded.isprintable():
+                            chars.append(decoded)
+                            sys.stdout.write("*")
+                            sys.stdout.flush()
+                    except Exception:
+                        pass
+
+            result = "".join(chars).strip()
+
+            # If user pressed Enter on an empty prompt, auto-detect key from clipboard
+            if not result:
+                clip = _get_windows_clipboard()
+                if clip and len(clip) >= 12:
+                    sys.stdout.write("*" * len(clip) + "\n")
+                    sys.stdout.flush()
+                    console.print("[dim](Auto-detected key from your clipboard)[/dim]")
+                    result = clip
+
+            return result
+        except Exception:
+            pass
+
+    # Fallback for non-Windows (Unix) consoles
     try:
-        raw_input = input().strip()
-    except (KeyboardInterrupt, EOFError):
-        return ""
-
-    # If user pressed Enter without typing/pasting, check if clipboard contains an API key
-    if not raw_input and sys.platform == "win32":
-        clip = _get_windows_clipboard()
-        if clip and len(clip) >= 12:
-            console.print("[dim](Auto-detected key from your clipboard!)[/dim]")
-            raw_input = clip
-
-    if raw_input:
-        masked = "*" * len(raw_input)
-        console.print(f"[bold green]✔ Key received: [cyan]{masked}[/cyan][/bold green]")
-
-    return raw_input
+        import getpass
+        raw = getpass.getpass("").strip()
+        if raw:
+            sys.stdout.write("*" * len(raw) + "\n")
+            sys.stdout.flush()
+        return raw
+    except Exception:
+        return input().strip()
 
 
 def save_key_to_env(
