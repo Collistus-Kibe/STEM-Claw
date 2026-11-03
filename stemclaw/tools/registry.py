@@ -159,48 +159,93 @@ class ToolRegistry:
 
         # Category 1: Life Sciences
         if category == STEMCategory.LIFE_SCIENCES:
+            # Core domain endpoints
             reg.register(NCBIEsearchTool())
             reg.register(NCBIEfetchTool())
             reg.register(EuropePMCSearchTool())
             reg.register(BioRxivSearchTool())
             reg.register(UniProtSearchTool())
             reg.register(OrcidLookupTool())
+            # Cross-category endpoints
+            reg.register(PubchemSearchTool())
+            reg.register(ChemblSearchTool())
+            reg.register(OpenAlexSearchTool())
+            reg.register(CrossrefSearchTool())
+            reg.register(UnpaywallLookupTool())
+            reg.register(GithubSearchTool())
+            reg.register(ArxivSearchTool())
+            reg.register(SemanticScholarSearchTool())
+            reg.register(CORESearchTool())
 
         # Category 2: Physical Sciences
         elif category == STEMCategory.PHYSICAL_SCIENCES:
+            # Core domain endpoints
             reg.register(ArxivSearchTool())
             reg.register(OpenAlexSearchTool())
             reg.register(CrossrefSearchTool())
             reg.register(DoePagesSearchTool())
             reg.register(ChemblSearchTool())
             reg.register(PubchemSearchTool())
+            # Cross-category endpoints
+            reg.register(UnpaywallLookupTool())
+            reg.register(GithubSearchTool())
+            reg.register(SemanticScholarSearchTool())
+            reg.register(CORESearchTool())
+            reg.register(EuropePMCSearchTool())
+            reg.register(USGSEarthquakesTool())
 
         # Category 3: Engineering & CS
         elif category == STEMCategory.ENGINEERING_CS:
+            # Core domain endpoints
             reg.register(DBLPSearchTool())
             reg.register(SemanticScholarSearchTool())
             reg.register(SemanticScholarRefsTool())
             reg.register(PapersWithCodeTool())
             reg.register(GithubSearchTool())
             reg.register(IEEEXploreTool())
+            # Cross-category endpoints
+            reg.register(ArxivSearchTool())
+            reg.register(OpenAlexSearchTool())
+            reg.register(CrossrefSearchTool())
+            reg.register(UnpaywallLookupTool())
+            reg.register(CORESearchTool())
 
         # Category 4: Earth & Environmental
         elif category == STEMCategory.EARTH_ENVIRONMENTAL:
+            # Core domain endpoints
             reg.register(GBIFOccurrencesTool())
             reg.register(GBIFSpeciesTool())
             reg.register(NASAMediaSearchTool())
             reg.register(NOAAClimateDataTool())
             reg.register(USGSEarthquakesTool())
             reg.register(CopernicusDataTool())
+            # Cross-category endpoints
+            reg.register(OpenAlexSearchTool())
+            reg.register(CrossrefSearchTool())
+            reg.register(BioRxivSearchTool())
+            reg.register(ArxivSearchTool())
+            reg.register(UnpaywallLookupTool())
+            reg.register(GithubSearchTool())
+            reg.register(CORESearchTool())
 
         # Category 5: Interdisciplinary
         elif category == STEMCategory.INTERDISCIPLINARY:
+            # Core domain endpoints
             reg.register(CORESearchTool())
             reg.register(UnpaywallLookupTool())
             reg.register(DOAJSearchTool())
             reg.register(ZenodoSearchTool())
             reg.register(FigshareSearchTool())
             reg.register(OSFPreprintsTool())
+            # Cross-category endpoints
+            reg.register(OpenAlexSearchTool())
+            reg.register(CrossrefSearchTool())
+            reg.register(GithubSearchTool())
+            reg.register(ArxivSearchTool())
+            reg.register(BioRxivSearchTool())
+            reg.register(EuropePMCSearchTool())
+            reg.register(SemanticScholarSearchTool())
+            reg.register(PubchemSearchTool())
 
         return reg
 

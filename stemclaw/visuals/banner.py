@@ -1,13 +1,16 @@
 """Terminal banner and summary cards rendered via Rich."""
 
+import os
 import sys
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-# Safe reconfigure on Windows to support UTF-8 without crashing cp1252/cp437
+# Safe reconfigure on Windows to support UTF-8 and VT100 without raw escape codes
 if sys.platform == "win32":
+    os.system("chcp 65001 > nul 2>&1")
+    os.system("")
     try:
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -18,9 +21,14 @@ if sys.platform == "win32":
 
 from stemclaw.session.router import CategoryLoadout, STEMCategory
 from stemclaw.session.state import SessionState
-from stemclaw.visuals.ascii_art import STEMCLAW_ASCII_LOGO, STEMCLAW_LOGO, get_category_ascii
+from stemclaw.visuals.ascii_art import (
+    ASCII_ROBOT_MONITOR,
+    STEMCLAW_ASCII_LOGO,
+    STEMCLAW_LOGO,
+    get_category_ascii,
+)
 
-console = Console(legacy_windows=False if sys.platform == "win32" else None)
+console = Console()
 
 # Theme color mappings
 THEME_COLORS = {
@@ -33,30 +41,50 @@ THEME_COLORS = {
 
 
 def print_banner(ascii_only: bool = False) -> None:
-    """Print the primary StemClaw welcome banner and launch info."""
+    """Print the primary StemClaw welcome banner with robot mascot monitor and launch info."""
     encoding = getattr(sys.stdout, "encoding", "utf-8") or "utf-8"
-    use_ascii = ascii_only or ("utf" not in encoding.lower())
+    term_width = getattr(console, "width", 80) or 80
+    use_ascii = ascii_only or ("utf" not in encoding.lower()) or (term_width < 78)
 
     logo_content = STEMCLAW_ASCII_LOGO if use_ascii else STEMCLAW_LOGO
     lines = logo_content.strip("\n").split("\n")
     styled_logo = Text()
     for line in lines:
         if "Research Agent" in line or "Autonomous" in line:
-            styled_logo.append(line.center(64) + "\n", style="bold bright_yellow")
+            styled_logo.append(line.center(50 if use_ascii else 64) + "\n", style="bold bright_yellow")
         else:
-            split_idx = 28 if use_ascii else 35
+            # Exactly split between STEM (cyan) and CLAW (magenta)
+            # 'M' ends at column 37, so column 38 cleanly keeps 'M' 100% solid cyan!
+            split_idx = 27 if use_ascii else 38
             if len(line) >= split_idx:
                 styled_logo.append(line[:split_idx], style="bold cyan")
                 styled_logo.append(line[split_idx:] + "\n", style="bold bright_magenta")
             else:
                 styled_logo.append(line + "\n", style="bold cyan")
 
+    robot_text = Text(ASCII_ROBOT_MONITOR.strip("\n"), style="bold bright_yellow")
+
+    if term_width >= 90:
+        banner_table = Table(
+            show_header=False,
+            show_edge=False,
+            box=None,
+            padding=(0, 1),
+            expand=True,
+        )
+        banner_table.add_column("logo", justify="left")
+        banner_table.add_column("robot", justify="right", width=25)
+        banner_table.add_row(styled_logo, robot_text)
+        content = banner_table
+    else:
+        content = styled_logo
+
     panel = Panel(
-        styled_logo,
-        title="[bold bright_white on navy_blue] 🔬 STEMCLAW v0.1.0 [/bold bright_white on navy_blue]",
+        content,
+        title="[bold bright_white on navy_blue] STEMCLAW v0.1.0 [/bold bright_white on navy_blue]",
         subtitle="[bold cyan]Powered by Meta Model API[/bold cyan] [dim](muse-wonder / muse-spark) • Autonomous STEM Agent[/dim]",
         border_style="bright_blue",
-        padding=(0, 2),
+        padding=(0, 1),
     )
     try:
         console.print(panel)
@@ -70,31 +98,59 @@ def print_banner(ascii_only: bool = False) -> None:
 
 
 def print_category_prompt() -> None:
-    """Print the single category selection prompt."""
-    table = Table(
-        show_header=True,
-        header_style="bold white on navy_blue",
-        border_style="dim",
-        expand=True,
+    """Print the 5 distinct STEM category loadout boxes in the former full-width vertical layout."""
+    console.print(
+        Panel(
+            "[bold white]Choose your STEM specialization loadout to arm category-specific tools & skills[/bold white]",
+            title="[bold yellow]SELECT A RESEARCH LOADOUT[/bold yellow]",
+            border_style="yellow",
+            padding=(0, 1),
+        )
     )
-    table.add_column("Key", justify="center", style="bold cyan", width=6)
-    table.add_column("Category", style="bold", width=24)
-    table.add_column("Domain Focus", style="dim")
 
-    table.add_row("[1]", "🧬 Life Sciences", "Genomics, Proteomics, NCBI/PubMed, Europe PMC, bioRxiv")
-    table.add_row("[2]", "⚛️ Physical Sciences", "arXiv Physics, Materials Project, ChEMBL, PubChem, OpenAlex")
-    table.add_row("[3]", "💻 Engineering & CS", "Semantic Scholar, DBLP, Papers With Code, GitHub, IEEE")
-    table.add_row("[4]", "🌍 Earth & Environmental", "GBIF Biodiversity, NASA Open Data, NOAA Climate, USGS")
-    table.add_row("[5]", "🔗 Interdisciplinary", "CORE API, Unpaywall, DOAJ, Zenodo, Figshare, OSF")
+    categories = [
+        (
+            "Box [1] • Life Sciences",
+            "green",
+            "Genomics • Proteomics • Molecular Biology • Biomedicine\n"
+            "[dim]Endpoints: NCBI/PubMed • Europe PMC • bioRxiv • UniProtKB • Clinical Trials • ChEMBL • AlphaFold[/dim]",
+        ),
+        (
+            "Box [2] • Physical Sciences",
+            "bright_blue",
+            "Quantum • Chemistry • Condensed Matter • Materials Informatics\n"
+            "[dim]Endpoints: arXiv • OpenAlex • Crossref • DOE PAGES • ChEMBL • PubChem • Materials Project[/dim]",
+        ),
+        (
+            "Box [3] • Engineering & CS",
+            "yellow",
+            "Machine Learning • Systems Architecture • Algorithms • Reproducibility\n"
+            "[dim]Endpoints: Semantic Scholar • DBLP • Papers With Code • GitHub • IEEE Xplore • arXiv (AI/CS)[/dim]",
+        ),
+        (
+            "Box [4] • Earth & Environmental",
+            "cyan",
+            "Biodiversity • Climate Records • Geospatial • Seismology\n"
+            "[dim]Endpoints: GBIF Occurrences • NASA Open Data • NOAA Climate • USGS Earthquakes • bioRxiv[/dim]",
+        ),
+        (
+            "Box [5] • Interdisciplinary",
+            "magenta",
+            "Systematic Literature Reviews (PRISMA) • Open Science • Meta-Science\n"
+            "[dim]Endpoints: CORE API • Unpaywall (PDFs) • DOAJ • Zenodo • Figshare • OSF Preprints • Crossref[/dim]",
+        ),
+    ]
 
-    panel = Panel(
-        table,
-        title="[bold yellow]Loadout Selection Required[/bold yellow]",
-        subtitle="[bold white]Reply with STEM category: [1] Life Sciences [2] Physical Sciences [3] Engineering & CS [4] Earth & Environmental [5] Interdisciplinary[/bold white]",
-        border_style="yellow",
-        padding=(1, 1),
-    )
-    console.print(panel)
+    for title, color, desc in categories:
+        console.print(
+            Panel(
+                desc,
+                title=f"[bold {color}]{title}[/bold {color}]",
+                border_style=color,
+                padding=(0, 1),
+            )
+        )
+    console.print()
 
 
 def print_loadout_summary(session: SessionState, loadout: CategoryLoadout) -> None:

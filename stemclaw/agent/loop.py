@@ -10,6 +10,7 @@ from rich.text import Text
 
 from stemclaw.agent.history import ConversationHistory
 from stemclaw.agent.prompts import get_system_prompt
+from stemclaw.keys import suggest_external_key_if_needed
 from stemclaw.model import get_model_adapter
 from stemclaw.model.adapter import ModelAdapter
 from stemclaw.session.state import SessionState
@@ -17,6 +18,16 @@ from stemclaw.tools.base import ToolCall, ToolResult
 from stemclaw.tools.registry import ToolRegistry, get_default_registry
 
 console = Console()
+
+TOOL_KEY_SUGGESTIONS = {
+    "pubmed_search": ("NCBI_API_KEY", "Raises PubMed request throughput from 3 req/s to 10 req/s"),
+    "ncbi_eutilities": ("NCBI_API_KEY", "Raises Entrez search throughput from 3 req/s to 10 req/s"),
+    "semantic_scholar_search": ("SEMANTIC_SCHOLAR_API_KEY", "Raises rate limit 10x and unlocks citation graphs"),
+    "materials_project_search": ("MATERIALS_PROJECT_API_KEY", "Unlocks crystal structures and DFT electronic calculations"),
+    "github_repo_search": ("GITHUB_TOKEN", "Raises GitHub API rate limit from 60 req/hr to 5,000 req/hr"),
+    "nasa_search": ("NASA_API_KEY", "Unlocks high-throughput Earth & astronomy sensor telemetry"),
+    "noaa_climate_search": ("NOAA_TOKEN", "Unlocks global historical weather station climate data"),
+}
 
 
 class AgentLoop:
@@ -75,6 +86,15 @@ class AgentLoop:
             )
 
             for call in pending_tool_calls:
+                # Proactively reason if an optional free external API key would boost this tool
+                if call.name in TOOL_KEY_SUGGESTIONS:
+                    k_name, k_reason = TOOL_KEY_SUGGESTIONS[call.name]
+                    suggest_external_key_if_needed(
+                        k_name,
+                        reason=k_reason,
+                        workspace_root=self.session.workspace_root,
+                    )
+
                 if is_verbose:
                     console.print(
                         Panel(
@@ -129,19 +149,14 @@ class AgentLoop:
         """Run the interactive terminal REPL."""
         from stemclaw.agent.commands import handle_slash_command
 
-        console.print(
-            Panel(
-                "[bold white]Autonomous Research Session Active[/bold white]\n"
-                "[dim]Type your research question, ask to search endpoints, or test tools.\n"
-                "Type [bold cyan]/help[/bold cyan] for slash commands or 'exit' / 'q' to end session.[/dim]",
-                border_style="cyan",
-            )
-        )
-
+        first_turn = True
         while True:
             category_name = self.session.category_name
             code = self.session.category_code
-            prompt_label = f"[bold cyan]stemclaw [{code}:{category_name}][/bold cyan] > "
+            if first_turn:
+                prompt_label = "[bold cyan]What would you like to research?[/bold cyan] > "
+            else:
+                prompt_label = f"[bold cyan]stemclaw [{code}:{category_name}][/bold cyan] > "
 
             try:
                 user_input = Prompt.ask(prompt_label)
@@ -164,3 +179,4 @@ class AgentLoop:
                     continue
 
             self.run_turn(cleaned)
+            first_turn = False

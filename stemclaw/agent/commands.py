@@ -80,6 +80,9 @@ def handle_slash_command(command_line: str, loop: "AgentLoop") -> bool:
     elif cmd == "/plan":
         _cmd_plan(loop)
         return True
+    elif cmd in ("/keys", "/key", "/api-keys"):
+        _cmd_keys(loop, arg1, arg2)
+        return True
     else:
         console.print(f"[yellow]Unknown command: '{cmd}'. Type [bold]/help[/bold] to see available commands.[/yellow]")
         return True
@@ -106,6 +109,7 @@ def _cmd_help(loop: "AgentLoop") -> None:
     table.add_row("/export [md|tex|bib] [file]", "Export session conversation and research report to disk")
     table.add_row("/clear", "Reset conversation history while preserving category loadout")
     table.add_row("/status", "Display session ID, active tools, repos, and API keys")
+    table.add_row("/keys [set <NAME>]", "View or configure Meta & external free API keys (masked input)")
     table.add_row("exit / quit / q", "Close the research session and return to shell")
 
     console.print(table)
@@ -408,5 +412,54 @@ def _cmd_plan(loop: "AgentLoop") -> None:
 
     console.print(table)
     console.print(f"[dim]Evidence Locker Items: {len(plan.evidence_locker)} | Total Epochs: {plan.total_epochs_run}[/dim]")
+
+
+def _cmd_keys(loop: "AgentLoop", action: str = "", key_name: str = "") -> None:
+    """View status or interactively configure external API keys with masked input."""
+    from stemclaw.keys import (
+        EXTERNAL_KEYS_REGISTRY,
+        print_keys_status_table,
+        read_masked_input,
+        save_key_to_env,
+    )
+
+    clean_act = action.strip().lower()
+    root = Path(loop.session.workspace_root)
+
+    if not clean_act or clean_act == "status" or clean_act == "list":
+        print_keys_status_table(root)
+        return
+
+    if clean_act in ("set", "add", "config", "configure"):
+        target_key = key_name.strip().upper()
+        if not target_key:
+            console.print("[yellow]Usage: /keys set <KEY_NAME>[/yellow]")
+            console.print(f"[dim]Supported keys: {', '.join(EXTERNAL_KEYS_REGISTRY.keys())}[/dim]")
+            return
+
+        if target_key not in EXTERNAL_KEYS_REGISTRY:
+            console.print(f"[bold red]Unknown key:[/bold red] '{target_key}'")
+            console.print(f"[dim]Supported keys: {', '.join(EXTERNAL_KEYS_REGISTRY.keys())}[/dim]")
+            return
+
+        info = EXTERNAL_KEYS_REGISTRY[target_key]
+        console.print(f"[bold cyan]Configuring {target_key}[/bold cyan] ({info['name']})")
+        console.print(f"[dim]Portal: {info['url']}[/dim]")
+        console.print("[dim]Input will be masked with asterisks (*******):[/dim]")
+
+        try:
+            val = read_masked_input(f"Enter {target_key}: ")
+        except (KeyboardInterrupt, EOFError):
+            console.print("\n[dim]Aborted.[/dim]")
+            return
+
+        if val:
+            save_key_to_env(target_key, val, workspace_root=root)
+            get_settings(reload=True)
+            console.print(f"[bold green]✔ Saved {target_key} to .stemclaw/.env and activated![/bold green]")
+        else:
+            console.print("[yellow]No key provided. Value unchanged.[/yellow]")
+    else:
+        console.print(f"[yellow]Unknown keys command '{action}'. Type /keys to see table or /keys set <NAME> to configure.[/yellow]")
 
 
