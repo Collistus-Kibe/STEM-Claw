@@ -194,6 +194,11 @@ def main(argv: Optional[list] = None) -> int:
         help="Reset active session and prompt for category afresh",
     )
     parser.add_argument(
+        "--mock",
+        action="store_true",
+        help="Run in offline exploration mode",
+    )
+    parser.add_argument(
         "-q",
         "--query",
         help="Run a single research turn non-interactively and exit",
@@ -247,14 +252,13 @@ def main(argv: Optional[list] = None) -> int:
 
     # Prompt for live Meta Model API key with smart [y/n] and masked input
     interactive = (not args.query and not args.no_repl)
-    ready = check_and_prompt_keys(session, interactive=interactive)
-    if not ready:
-        return 1
+    if not args.mock:
+        check_and_prompt_keys(session, interactive=interactive)
 
     # Install scientific visual animation hooks for literature tool calls
     install_visual_hooks(get_hook_manager(), session.category, animate_in_tty=sys.stdout.isatty())
 
-    adapter = get_model_adapter()
+    adapter = get_model_adapter(force_mock=args.mock)
     loop = AgentLoop(session=session, adapter=adapter)
 
     # 1. Resume existing deep research task if requested

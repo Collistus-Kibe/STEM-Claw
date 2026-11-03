@@ -205,15 +205,15 @@ def check_meta_api_key_flow(
 
     if choice.lower() in ("n", "no"):
         console.print(
-            "\n[bold red]StemClaw operates exclusively with live scientific data and requires an active Meta API key.[/bold red]"
+            "\n[bold yellow]Running in Offline Exploration Mode.[/bold yellow]"
         )
         console.print(
-            "[yellow]You can acquire a free key at https://dev.meta.ai anytime.[/yellow]"
+            "[dim]Browse loadouts, inspect repositories, and format citations offline.[/dim]"
         )
         console.print(
-            "[dim]Save it as META_API_KEY in .stemclaw/.env and relaunch.[/dim]\n"
+            "[dim]To enable live Meta Model reasoning anytime: get a key at https://dev.meta.ai and type /keys set META_API_KEY.[/dim]\n"
         )
-        return False
+        return True
 
     # User answered YES: prompt with masked input
     console.print(
@@ -222,8 +222,8 @@ def check_meta_api_key_flow(
     try:
         entered_key = read_masked_input("API Key: ")
     except (KeyboardInterrupt, EOFError):
-        console.print("\n[dim]No key entered. Aborting.[/dim]")
-        return False
+        console.print("\n[dim]No key entered. Continuing in offline mode.[/dim]\n")
+        return True
 
     if entered_key:
         save_key_to_env("META_API_KEY", entered_key, workspace_root=workspace_root)
@@ -234,9 +234,9 @@ def check_meta_api_key_flow(
         return True
     else:
         console.print(
-            "[bold red]Error: No API key provided. Cannot connect to live model.[/bold red]\n"
+            "[yellow]No API key provided. Continuing in offline mode.[/yellow]\n"
         )
-        return False
+        return True
 
 
 def suggest_external_key_if_needed(
