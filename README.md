@@ -11,7 +11,6 @@
 ```
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Model: Meta Model API](https://img.shields.io/badge/Model-Meta%20Model%20API-7928CA.svg)](https://dev.meta.ai/)
 [![Architecture: Loadout System](https://img.shields.io/badge/Architecture-5%20STEM%20Loadouts-00DF72.svg)](#-5-stem-specialization-categories)
 [![Live Endpoints: 29+](https://img.shields.io/badge/Endpoints-29%2B%20Live%20Scientific%20APIs-0070F3.svg)](#-complete-endpoint-directory-by-category)
