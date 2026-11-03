@@ -1,4 +1,4 @@
-# STEMCLAW 🦀🔬
+# 
 
 ```text
   ███████╗████████╗███████╗███╗   ███╗  ██████╗██╗      █████╗ ██╗    ██╗
@@ -218,7 +218,3 @@ Inside the StemClaw terminal session, control your investigation using slash com
 - **Reproducible Citations**: All retrieved papers are saved to a local SQLite database (`.stemclaw/cache.db`) so you can reproduce results offline without repeated API calls.
 
 ---
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
