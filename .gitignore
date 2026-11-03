@@ -32,10 +32,16 @@ env.bak/
 venv.bak/
 
 # StemClaw local runtime state & secrets
+.stemclaw/*
+!.stemclaw/.env.example
+*.env
+.env*
 .stemclaw/.env
 .stemclaw/session.json
-.stemclaw/*.log
+.stemclaw/tasks/
 .stemclaw/cache/
+*.sqlite3
+*.db
 
 # Testing & linting
 .pytest_cache/
