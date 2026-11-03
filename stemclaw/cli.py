@@ -1,6 +1,7 @@
 """StemClaw CLI command entry and interactive category picker."""
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Optional

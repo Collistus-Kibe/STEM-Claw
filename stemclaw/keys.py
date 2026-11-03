@@ -4,6 +4,18 @@ import os
 import sys
 from pathlib import Path
 from typing import Dict, Optional, Set
+
+# Ensure UTF-8 output on Windows consoles to prevent cp1252 charmap encoding errors
+if sys.platform == "win32":
+    os.system("")  # Enable VT100
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
@@ -11,7 +23,7 @@ from rich.table import Table
 
 from stemclaw.config import get_settings
 
-console = Console()
+console = Console(safe_box=True)
 
 # Registry of supported external free API keys that elevate search quality & throughput
 EXTERNAL_KEYS_REGISTRY: Dict[str, Dict[str, str]] = {
@@ -84,56 +96,57 @@ EXTERNAL_KEYS_REGISTRY: Dict[str, Dict[str, str]] = {
 _DECLINED_KEYS_IN_SESSION: Set[str] = set()
 
 
-def read_masked_input(prompt_text: str = "API Key: ") -> str:
-    """Read password/key from the console, masking with '*' in real-time.
+def _get_windows_clipboard() -> str:
+    """Safely read plain text from Windows clipboard if available."""
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        if not user32.OpenClipboard(None):
+            return ""
+        try:
+            CF_UNICODETEXT = 13
+            if not user32.IsClipboardFormatAvailable(CF_UNICODETEXT):
+                return ""
+            h_data = user32.GetClipboardData(CF_UNICODETEXT)
+            if not h_data:
+                return ""
+            kernel32.GlobalLock.restype = ctypes.c_wchar_p
+            ptr = kernel32.GlobalLock(h_data)
+            text = str(ptr) if ptr else ""
+            kernel32.GlobalUnlock(h_data)
+            return text.strip()
+        finally:
+            user32.CloseClipboard()
+    except Exception:
+        return ""
 
-    Safe across Windows cmd.exe, PowerShell, Windows Terminal, and Unix consoles.
+
+def read_masked_input(prompt_text: str = "API Key: ") -> str:
+    """Read API key with full native paste support (Ctrl+V, Right-Click, Shift+Insert).
+
+    Immediately masks the input with asterisks (*******) upon submission.
     """
     sys.stdout.write(prompt_text)
     sys.stdout.flush()
 
-    if sys.platform == "win32":
-        try:
-            import msvcrt
-
-            chars: list[str] = []
-            while True:
-                ch = msvcrt.getch()
-                if ch in (b"\r", b"\n"):
-                    sys.stdout.write("\n")
-                    sys.stdout.flush()
-                    break
-                elif ch in (b"\x03", b"\x1a"):  # Ctrl+C or Ctrl+Z
-                    sys.stdout.write("\n")
-                    sys.stdout.flush()
-                    raise KeyboardInterrupt()
-                elif ch == b"\x08":  # Backspace
-                    if chars:
-                        chars.pop()
-                        sys.stdout.write("\b \b")
-                        sys.stdout.flush()
-                elif ch in (b"\x00", b"\xe0"):  # Special key prefix
-                    msvcrt.getch()
-                else:
-                    try:
-                        decoded = ch.decode("utf-8", errors="ignore")
-                        if decoded and decoded.isprintable():
-                            chars.append(decoded)
-                            sys.stdout.write("*")
-                            sys.stdout.flush()
-                    except Exception:
-                        pass
-            return "".join(chars).strip()
-        except Exception:
-            pass
-
-    # Fallback for Unix or non-standard Windows consoles
     try:
-        import getpass
+        raw_input = input().strip()
+    except (KeyboardInterrupt, EOFError):
+        return ""
 
-        return getpass.getpass("").strip()
-    except Exception:
-        return input().strip()
+    # If user pressed Enter without typing/pasting, check if clipboard contains an API key
+    if not raw_input and sys.platform == "win32":
+        clip = _get_windows_clipboard()
+        if clip and len(clip) >= 12:
+            console.print("[dim](Auto-detected key from your clipboard!)[/dim]")
+            raw_input = clip
+
+    if raw_input:
+        masked = "*" * len(raw_input)
+        console.print(f"[bold green]✔ Key received: [cyan]{masked}[/cyan][/bold green]")
+
+    return raw_input
 
 
 def save_key_to_env(
@@ -217,7 +230,7 @@ def check_meta_api_key_flow(
 
     # User answered YES: prompt with masked input
     console.print(
-        "[bold cyan]Please paste your Meta Model API Key below (input will be masked with *******):[/bold cyan]"
+        "[bold cyan]Please paste your Meta Model API Key below (press Ctrl+V or Right-Click to paste):[/bold cyan]"
     )
     try:
         entered_key = read_masked_input("API Key: ")
