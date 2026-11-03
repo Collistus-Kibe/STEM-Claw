@@ -97,11 +97,25 @@ _DECLINED_KEYS_IN_SESSION: Set[str] = set()
 
 
 def _get_windows_clipboard() -> str:
-    """Safely read plain text from Windows clipboard if available."""
+    """Safely read plain text from Windows clipboard with 64-bit ctypes safety."""
     try:
         import ctypes
         user32 = ctypes.windll.user32
         kernel32 = ctypes.windll.kernel32
+
+        user32.OpenClipboard.argtypes = [ctypes.c_void_p]
+        user32.OpenClipboard.restype = ctypes.c_bool
+        user32.CloseClipboard.argtypes = []
+        user32.CloseClipboard.restype = ctypes.c_bool
+        user32.IsClipboardFormatAvailable.argtypes = [ctypes.c_uint]
+        user32.IsClipboardFormatAvailable.restype = ctypes.c_bool
+        user32.GetClipboardData.argtypes = [ctypes.c_uint]
+        user32.GetClipboardData.restype = ctypes.c_void_p
+        kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
+        kernel32.GlobalLock.restype = ctypes.c_wchar_p
+        kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+        kernel32.GlobalUnlock.restype = ctypes.c_bool
+
         if not user32.OpenClipboard(None):
             return ""
         try:
@@ -111,11 +125,9 @@ def _get_windows_clipboard() -> str:
             h_data = user32.GetClipboardData(CF_UNICODETEXT)
             if not h_data:
                 return ""
-            kernel32.GlobalLock.restype = ctypes.c_wchar_p
-            ptr = kernel32.GlobalLock(h_data)
-            text = str(ptr) if ptr else ""
+            text = kernel32.GlobalLock(h_data)
             kernel32.GlobalUnlock(h_data)
-            return text.strip()
+            return str(text).strip() if text else ""
         finally:
             user32.CloseClipboard()
     except Exception:
@@ -123,45 +135,101 @@ def _get_windows_clipboard() -> str:
 
 
 def read_masked_input(prompt_text: str = "API Key: ") -> str:
-    """Read API key with 100% reliable paste (Ctrl+V, Right-Click, Shift+Insert).
+    """Read API key with real-time asterisk masking ('*******') and full paste support.
 
-    Upon submission, immediately erases the plaintext line from the terminal
-    and overwrites it with asterisks ('*******'), ensuring the secret key is never
-    left visible in the terminal buffer.
+    Every character typed or pasted appears strictly as '*' on the terminal.
+    Plaintext secrets are never displayed.
     """
-    while True:
-        sys.stdout.write(prompt_text)
-        sys.stdout.flush()
+    sys.stdout.write(prompt_text)
+    sys.stdout.flush()
 
+    if sys.platform == "win32":
         try:
-            raw_input = input().strip()
-        except (KeyboardInterrupt, EOFError):
-            sys.stdout.write("\n")
+            import msvcrt
+
+            # Flush any leftover keystrokes or newlines from prior prompts
+            while msvcrt.kbhit():
+                try:
+                    msvcrt.getwch()
+                except Exception:
+                    break
+
+            chars: list[str] = []
+            while True:
+                ch = msvcrt.getwch()
+
+                # Enter submits
+                if ch in ("\r", "\n"):
+                    if chars:
+                        sys.stdout.write("\n")
+                        sys.stdout.flush()
+                        break
+                    else:
+                        # If user pressed Enter on empty prompt, auto-detect from clipboard
+                        clip = _get_windows_clipboard()
+                        if clip and len(clip) >= 12:
+                            for c in clip:
+                                if c not in ("\r", "\n"):
+                                    chars.append(c)
+                                    sys.stdout.write("*")
+                            sys.stdout.write("\n")
+                            sys.stdout.flush()
+                            console.print("[dim](Auto-detected API key from your clipboard!)[/dim]")
+                            break
+                        continue
+
+                # Ctrl+C or Ctrl+Z aborts
+                elif ch in ("\x03", "\x1a"):
+                    sys.stdout.write("\n")
+                    sys.stdout.flush()
+                    raise KeyboardInterrupt()
+
+                # Ctrl+V (ASCII 22 = '\x16'): Paste from Windows clipboard masked with '*'
+                elif ch == "\x16":
+                    clip = _get_windows_clipboard()
+                    if clip:
+                        for c in clip:
+                            if c not in ("\r", "\n"):
+                                chars.append(c)
+                                sys.stdout.write("*")
+                        sys.stdout.flush()
+
+                # Backspace erases last character and its asterisk
+                elif ch == "\x08":
+                    if chars:
+                        chars.pop()
+                        sys.stdout.write("\b \b")
+                        sys.stdout.flush()
+
+                # Extended keys prefix (arrow keys, function keys)
+                elif ch in ("\x00", "\xe0"):
+                    if msvcrt.kbhit():
+                        try:
+                            msvcrt.getwch()  # consume scan code
+                        except Exception:
+                            pass
+
+                # Normal typed or right-click pasted character
+                else:
+                    if ch.isprintable():
+                        chars.append(ch)
+                        sys.stdout.write("*")
+                        sys.stdout.flush()
+
+            return "".join(chars).strip()
+        except Exception:
+            pass
+
+    # Fallback for non-Windows (Unix) consoles
+    try:
+        import getpass
+        raw = getpass.getpass("").strip()
+        if raw:
+            sys.stdout.write("*" * len(raw) + "\n")
             sys.stdout.flush()
-            return ""
-
-        if raw_input.lower() in ("q", "quit", "exit", "skip"):
-            return ""
-
-        # If user pressed Enter on empty prompt, auto-detect from Windows clipboard
-        if not raw_input and sys.platform == "win32":
-            clip = _get_windows_clipboard()
-            if clip and len(clip) >= 12:
-                raw_input = clip
-                console.print("[dim](Auto-detected key from your clipboard)[/dim]")
-
-        if raw_input:
-            # Overwrite the typed/pasted key on the console line with asterisks
-            masked = "*" * len(raw_input)
-            # Move cursor up 1 line, move to column 0, clear entire line, write masked string
-            sys.stdout.write(f"\033[1A\r\033[2K{prompt_text}{masked}\n")
-            sys.stdout.flush()
-            return raw_input
-        else:
-            console.print(
-                "[yellow]No input detected. Press Ctrl+V or Right-Click to paste (or type 'skip'):[/yellow]"
-            )
-            continue
+        return raw
+    except Exception:
+        return input().strip()
 
 
 def save_key_to_env(
