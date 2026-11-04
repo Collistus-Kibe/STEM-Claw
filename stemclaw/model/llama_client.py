@@ -8,20 +8,31 @@ from stemclaw.model.adapter import ModelAdapter, ModelResponse, StreamChunk
 from stemclaw.tools.base import ToolCall
 
 
+def normalize_model_name(name: str) -> str:
+    """Normalize model aliases to exact catalog model IDs."""
+    aliases = {
+        "muse-wonder": "muse-wonder-1.0",
+        "muse-spark": "muse-spark-1.3",
+        "muse-spark-contributor": "muse-spark-1.3-contributor",
+    }
+    cleaned = (name or "").strip()
+    return aliases.get(cleaned.lower(), cleaned)
+
+
 class LlamaModelAdapter(ModelAdapter):
-    """Adapter for the hosted Meta Llama API (api.llama.com)."""
+    """Adapter for the hosted Meta Model API (api.meta.ai / api.llama.com)."""
 
     def __init__(
         self,
         api_key: str,
-        model: str = "Llama-4-Maverick-17B-128E-Instruct-FP8",
-        fallback_model: str = "Llama-4-Scout-17B-16E-Instruct",
-        base_url: str = "https://api.llama.com",
+        model: str = "muse-wonder-1.0",
+        fallback_model: str = "muse-spark-1.3",
+        base_url: str = "https://api.meta.ai/v1",
         timeout: float = 60.0,
     ) -> None:
         self.api_key = api_key
-        self.model_name = model
-        self.fallback_model = fallback_model
+        self.model_name = normalize_model_name(model)
+        self.fallback_model = normalize_model_name(fallback_model) if fallback_model else ""
         clean_url = base_url.rstrip("/")
         if not clean_url.endswith("/v1"):
             clean_url = f"{clean_url}/v1"
@@ -131,7 +142,7 @@ class LlamaModelAdapter(ModelAdapter):
                                 ]
 
                         # Package accumulated tool calls
-                        if finish_reason in ("tool_calls", "function_call"):
+                        if finish_reason in ("tool_calls", "function_call") or (finish_reason and accumulated_tool_calls):
                             completed_calls = []
                             for idx, tc in sorted(accumulated_tool_calls.items()):
                                 args_parsed = {}

@@ -28,15 +28,15 @@ class StemClawSettings(BaseSettings):
     meta_api_key: Optional[str] = Field(default=None, alias="META_API_KEY")
     llama_api_key: Optional[str] = Field(default=None, alias="LLAMA_API_KEY")
     meta_model: str = Field(
-        default="muse-wonder",
+        default="muse-wonder-1.0",
         alias="META_MODEL",
     )
     llama_model: str = Field(
-        default="muse-wonder",
+        default="muse-wonder-1.0",
         alias="LLAMA_MODEL",
     )
     llama_fallback_model: str = Field(
-        default="muse-spark",
+        default="muse-spark-1.3",
         alias="LLAMA_FALLBACK_MODEL",
     )
     meta_api_base: str = Field(
@@ -54,7 +54,13 @@ class StemClawSettings(BaseSettings):
 
     @property
     def effective_model(self) -> str:
-        return self.meta_model or self.llama_model or "muse-wonder"
+        raw = self.meta_model or self.llama_model or "muse-wonder-1.0"
+        aliases = {
+            "muse-wonder": "muse-wonder-1.0",
+            "muse-spark": "muse-spark-1.3",
+            "muse-spark-contributor": "muse-spark-1.3-contributor",
+        }
+        return aliases.get(raw.strip().lower(), raw.strip())
 
     @property
     def effective_api_base(self) -> str:

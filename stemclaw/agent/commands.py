@@ -193,7 +193,7 @@ def _cmd_model(loop: "AgentLoop", model_name: str) -> None:
     """Switch active live model dynamically."""
     if not model_name:
         console.print(f"Current live model: [bold cyan]{loop.adapter.model_name}[/bold cyan]")
-        console.print("Usage: [bold]/model [muse-wonder | muse-spark | Llama-4-Maverick-17B-128E-Instruct-FP8][/bold]")
+        console.print("Usage: [bold]/model [muse-wonder-1.0 | muse-spark-1.3][/bold]")
         return
 
     from stemclaw.model.llama_client import LlamaModelAdapter

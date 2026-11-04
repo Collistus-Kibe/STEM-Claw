@@ -27,7 +27,7 @@ def get_model_adapter(
         return OfflineModelAdapter()
     return LlamaModelAdapter(
         api_key=key,
-        model=settings.meta_model or settings.llama_model or "muse-wonder",
-        fallback_model=settings.llama_fallback_model or "muse-spark",
-        base_url=settings.meta_api_base or settings.llama_api_base or "https://api.meta.ai/v1",
+        model=settings.effective_model,
+        fallback_model=settings.llama_fallback_model or "muse-spark-1.3",
+        base_url=settings.effective_api_base or "https://api.meta.ai/v1",
     )
