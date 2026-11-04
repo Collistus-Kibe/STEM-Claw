@@ -52,39 +52,55 @@ class AgentLoop:
         self,
         user_input: str,
         verbose: Optional[bool] = None,
+        max_tool_rounds: int = 8,
     ) -> str:
-        """Execute a single agent interaction turn with tool execution support."""
+        """Execute an agent interaction turn with multi-step autonomous tool execution support."""
         is_verbose = self.verbose if verbose is None else verbose
         self.history.add_user_message(user_input)
         tools = self.registry.get_schemas()
 
-        content_accumulator = []
-        pending_tool_calls: list[ToolCall] = []
+        final_content = ""
+        current_round = 0
 
-        # 1. Stream primary response or tool call from model
-        if is_verbose:
-            console.print(f"\n[bold cyan]StemClaw ({self.adapter.model_name})[/bold cyan]: ", end="")
-        for chunk in self.adapter.generate_stream(
-            self.history.get_messages(), tools=tools
-        ):
-            if chunk.text_delta:
-                if is_verbose:
-                    console.print(chunk.text_delta, end="")
-                content_accumulator.append(chunk.text_delta)
-            if chunk.tool_calls:
-                pending_tool_calls.extend(chunk.tool_calls)
+        while current_round < max_tool_rounds:
+            current_round += 1
+            content_accumulator = []
+            pending_tool_calls: list[ToolCall] = []
 
-        if is_verbose:
-            console.print()  # newline
+            # 1. Stream response or tool call from model
+            if is_verbose:
+                if current_round == 1:
+                    console.print(f"\n[bold cyan]StemClaw ({self.adapter.model_name})[/bold cyan]: ", end="")
+                else:
+                    console.print(f"\n[bold cyan]StemClaw (Synthesis)[/bold cyan]: ", end="")
 
-        # 2. If model requested tool calls, execute them locally
-        if pending_tool_calls:
-            # Record assistant turn that requested tool calls
+            for chunk in self.adapter.generate_stream(
+                self.history.get_messages(), tools=tools
+            ):
+                if chunk.text_delta:
+                    if is_verbose:
+                        console.print(chunk.text_delta, end="")
+                    content_accumulator.append(chunk.text_delta)
+                if chunk.tool_calls:
+                    pending_tool_calls.extend(chunk.tool_calls)
+
+            if is_verbose:
+                console.print()  # newline
+
             assistant_content = "".join(content_accumulator)
+
+            # If no tools were requested, this is the final answer!
+            if not pending_tool_calls:
+                self.history.add_assistant_message(assistant_content)
+                final_content = assistant_content
+                break
+
+            # If tools were requested, record assistant turn with tool calls
             self.history.add_assistant_message(
                 assistant_content, tool_calls=pending_tool_calls
             )
 
+            # 2. Execute requested tool calls locally
             for call in pending_tool_calls:
                 # Proactively reason if an optional free external API key would boost this tool
                 if call.name in TOOL_KEY_SUGGESTIONS:
@@ -110,9 +126,12 @@ class AgentLoop:
 
                 if is_verbose:
                     border_color = "red" if result.is_error else "green"
+                    output_text = result.output
+                    if len(output_text) > 2000:
+                        output_text = output_text[:2000] + f"\n... [truncated {len(result.output) - 2000} chars]"
                     console.print(
                         Panel(
-                            f"[dim]{result.output}[/dim]",
+                            f"[dim]{output_text}[/dim]",
                             title=f"[{border_color}]Tool Output: {result.name}[/{border_color}]",
                             border_style=border_color,
                             padding=(0, 2),
@@ -122,28 +141,7 @@ class AgentLoop:
                 # Append tool output to history
                 self.history.add_tool_result(result)
 
-            # 3. Model synthesizes final response incorporating tool results
-            if is_verbose:
-                console.print(f"[bold cyan]StemClaw (Synthesis)[/bold cyan]: ", end="")
-            synthesis_accumulator = []
-            for chunk in self.adapter.generate_stream(
-                self.history.get_messages(), tools=tools
-            ):
-                if chunk.text_delta:
-                    if is_verbose:
-                        console.print(chunk.text_delta, end="")
-                    synthesis_accumulator.append(chunk.text_delta)
-
-            if is_verbose:
-                console.print()
-            final_content = "".join(synthesis_accumulator)
-            self.history.add_assistant_message(final_content)
-            return final_content
-
-        # No tool calls; record standard assistant turn
-        full_content = "".join(content_accumulator)
-        self.history.add_assistant_message(full_content)
-        return full_content
+        return final_content
 
     def interactive_repl(self) -> None:
         """Run the interactive terminal REPL."""
@@ -171,6 +169,18 @@ class AgentLoop:
             if cleaned.lower() in ("exit", "quit", "q"):
                 console.print("[dim]Session closed.[/dim]")
                 break
+
+            # Check for direct category loadout switch (e.g. typing "2", "/2", "mode 2", "switch 2")
+            if cleaned in ("1", "2", "3", "4", "5"):
+                from stemclaw.agent.commands import _cmd_loadout
+                _cmd_loadout(self, cleaned)
+                continue
+
+            parts = cleaned.split()
+            if len(parts) == 2 and parts[0].lower() in ("mode", "switch", "loadout", "category") and parts[1] in ("1", "2", "3", "4", "5"):
+                from stemclaw.agent.commands import _cmd_loadout
+                _cmd_loadout(self, parts[1])
+                continue
 
             # Check for slash command
             if cleaned.startswith("/"):

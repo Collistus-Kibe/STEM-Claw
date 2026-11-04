@@ -54,8 +54,11 @@ def handle_slash_command(command_line: str, loop: "AgentLoop") -> bool:
     elif cmd == "/skills":
         _cmd_skills(loop, arg1)
         return True
-    elif cmd in ("/loadout", "/category"):
+    elif cmd in ("/loadout", "/category", "/mode", "/switch"):
         _cmd_loadout(loop, arg1)
+        return True
+    elif cmd in ("/1", "/2", "/3", "/4", "/5"):
+        _cmd_loadout(loop, cmd[1:])
         return True
     elif cmd == "/model":
         _cmd_model(loop, arg1)
