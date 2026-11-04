@@ -68,8 +68,10 @@ class LlamaModelAdapter(ModelAdapter):
         tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Iterator[StreamChunk]:
         """Stream SSE chunks from Meta Llama API, accumulating tool call arguments."""
+        from stemclaw.agent.history import sanitize_messages_for_api
+
         payload: Dict[str, Any] = {
-            "messages": messages,
+            "messages": sanitize_messages_for_api(messages),
             "stream": True,
         }
         if tools:

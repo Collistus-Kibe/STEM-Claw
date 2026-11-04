@@ -271,6 +271,16 @@ class AgentLoop:
                 console.print("[dim]Session closed.[/dim]")
                 break
 
+            # Automatically route common commands typed without leading slash
+            cmd_root = cleaned.lower().split()[0]
+            if cmd_root in (
+                "new", "clear", "reset", "download", "chats",
+                "history", "reload", "help", "keys", "status",
+                "skills", "plan"
+            ):
+                if not cleaned.startswith("/"):
+                    cleaned = "/" + cleaned
+
             # Check for direct category loadout switch (e.g. typing "2", "/2", "mode 2", "switch 2")
             if cleaned in ("1", "2", "3", "4", "5"):
                 from stemclaw.agent.commands import _cmd_loadout

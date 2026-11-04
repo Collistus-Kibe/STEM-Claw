@@ -66,7 +66,7 @@ def handle_slash_command(command_line: str, loop: "AgentLoop") -> bool:
     elif cmd == "/export":
         _cmd_export(loop, arg1, arg2)
         return True
-    elif cmd == "/clear":
+    elif cmd in ("/clear", "/new", "/reset"):
         _cmd_clear(loop)
         return True
     elif cmd == "/status":
@@ -137,7 +137,7 @@ def _cmd_help(loop: "AgentLoop") -> None:
     table.add_row("/loadout [1-5|name]", "Hot-swap active STEM category loadout mid-session")
     table.add_row("/model [name]", "Switch active live model (muse-wonder, muse-spark, Llama-4-Maverick)")
     table.add_row("/export [md|tex|bib] [file]", "Export session conversation and research report to disk")
-    table.add_row("/clear", "Reset conversation history while preserving category loadout")
+    table.add_row("/new, /clear", "Start a new clean research chat while preserving loadout")
     table.add_row("/status", "Display session ID, active tools, repos, and API keys")
     table.add_row("/keys [set <NAME>]", "View or configure Meta & external free API keys (masked input)")
     table.add_row("/download [file]", "Copy latest research report & bibtex directly to laptop Downloads folder")
@@ -315,8 +315,10 @@ This document synthesizes findings gathered during the StemClaw research session
 
 def _cmd_clear(loop: "AgentLoop") -> None:
     """Clear conversation history messages."""
+    import uuid
     loop.history.clear_messages()
-    console.print("[green]✔ Conversation history cleared. Category loadout and system prompt preserved.[/green]")
+    loop.session.session_id = str(uuid.uuid4())
+    console.print("[bold green]✔ Started a new clean research chat! Previous chat saved to database.[/bold green]\n")
 
 
 def _cmd_status(loop: "AgentLoop") -> None:
