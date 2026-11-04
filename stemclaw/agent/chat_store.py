@@ -168,3 +168,4 @@ def get_chat_store() -> ChatStore:
     if _GLOBAL_CHAT_STORE is None:
         _GLOBAL_CHAT_STORE = ChatStore()
     return _GLOBAL_CHAT_STORE
+

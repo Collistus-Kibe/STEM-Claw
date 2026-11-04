@@ -76,3 +76,4 @@ def compact_messages_for_llm(
         optimized.append(msg)
 
     return optimized
+

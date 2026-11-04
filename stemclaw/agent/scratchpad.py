@@ -113,3 +113,4 @@ def get_scratchpad() -> ResearchScratchpad:
     if _GLOBAL_SCRATCHPAD is None:
         _GLOBAL_SCRATCHPAD = ResearchScratchpad.load()
     return _GLOBAL_SCRATCHPAD
+
