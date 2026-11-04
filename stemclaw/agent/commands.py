@@ -86,6 +86,13 @@ def handle_slash_command(command_line: str, loop: "AgentLoop") -> bool:
     elif cmd in ("/keys", "/key", "/api-keys"):
         _cmd_keys(loop, arg1, arg2)
         return True
+    elif cmd in ("/exit", "/quit", "/q"):
+        console.print("[dim]Session closed.[/dim]")
+        sys.exit(0)
+    elif cmd in ("/reload", "/restart"):
+        console.print("[bold green]✔ Reloading StemClaw in-place...[/bold green]\n")
+        import os
+        os.execv(sys.executable, [sys.executable, "-m", "stemclaw"] + sys.argv[1:])
     else:
         console.print(f"[yellow]Unknown command: '{cmd}'. Type [bold]/help[/bold] to see available commands.[/yellow]")
         return True

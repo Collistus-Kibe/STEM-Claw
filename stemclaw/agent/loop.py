@@ -166,7 +166,7 @@ class AgentLoop:
             if not cleaned:
                 continue
 
-            if cleaned.lower() in ("exit", "quit", "q"):
+            if cleaned.lower() in ("exit", "quit", "q", "/exit", "/quit", "/q"):
                 console.print("[dim]Session closed.[/dim]")
                 break
 
