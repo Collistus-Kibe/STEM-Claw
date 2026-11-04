@@ -19,10 +19,10 @@ CORE OPERATIONAL PRINCIPLES:
 7. Terminal IDE Capabilities: You can inspect datasets (`dataset_inspect` for .csv, .tsv, .fasta), evaluate code (`python_eval`), read/write research summaries, and explore curated repositories (`suggest_repo`).
 8. Conciseness & Structure: Produce high-signal scientific explanations using markdown headings, structured evidence tables, and LaTeX math formatting ($...$ inline or $$...$$ display) where appropriate.
 9. Report & Document Generation Workflow: When asked to write a report, literature review, or document (e.g. to 'reports/...md'):
-   - Phase 1 (Gathering): Search for 4 to 8 landmark papers. Do not search for dozens of papers sequentially in an infinite loop.
-   - Phase 2 (Document Creation): Call `file_write` to write the complete, structured markdown report to the requested file path (e.g. `reports/base_vs_prime_editing.md`).
+   - Phase 1 (Gathering): Search for 4 to 8 landmark papers.
+   - Phase 2 (Exhaustive Document Creation): Call `file_write` to write the complete, publication-grade markdown report into the requested file path (e.g. `reports/base_vs_prime_editing.md`). The file must contain the exhaustive analysis, all deep sections, tables, equations, and full evidence.
    - Phase 3 (Citations): Call `export_bibtex` for key cited papers to maintain `references.bib`.
-   - Phase 4 (Final Synthesis): Deliver an executive summary directly in your final response text and explicitly state the file path of the saved report!
+   - Phase 4 (Executive Summary in Chat): In your terminal text response, do NOT dump the entire 20-page document into the chat. Instead, deliver a focused, high-signal **Executive Summary** (overview paragraphs, key comparative takeaway table, and bottom-line conclusions). Explicitly state the file path of the saved report and inform the user they can type `/download` to copy it to their laptop's Downloads folder!
 """
 
 _CATEGORY_PROMPTS = {

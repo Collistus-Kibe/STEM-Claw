@@ -89,6 +89,9 @@ def handle_slash_command(command_line: str, loop: "AgentLoop") -> bool:
     elif cmd in ("/exit", "/quit", "/q"):
         console.print("[dim]Session closed.[/dim]")
         sys.exit(0)
+    elif cmd in ("/download", "/get", "/save"):
+        _cmd_download(loop, arg1)
+        return True
     elif cmd in ("/chats", "/history"):
         _cmd_chats(loop, arg1, arg2)
         return True
@@ -137,6 +140,7 @@ def _cmd_help(loop: "AgentLoop") -> None:
     table.add_row("/clear", "Reset conversation history while preserving category loadout")
     table.add_row("/status", "Display session ID, active tools, repos, and API keys")
     table.add_row("/keys [set <NAME>]", "View or configure Meta & external free API keys (masked input)")
+    table.add_row("/download [file]", "Copy latest research report & bibtex directly to laptop Downloads folder")
     table.add_row("/chats [load <id>]", "List past research sessions or resume previous chats")
     table.add_row("/memory [clear]", "Inspect persistent research scratchpad memory")
     table.add_row("/reload", "Hot-restart StemClaw in-place and restore active chat")
@@ -582,3 +586,66 @@ def _cmd_memory(loop: "AgentLoop", subcmd: str, content: str = "") -> None:
         )
     )
     console.print("[dim]Tip: The agent automatically records findings here. Use '/memory clear' to reset.[/dim]\n")
+
+
+def _cmd_download(loop: "AgentLoop", target_file: str = "") -> None:
+    """Download research report(s) directly to the user's laptop Downloads folder."""
+    import shutil
+    from pathlib import Path
+
+    downloads_dir = Path.home() / "Downloads"
+    if not downloads_dir.exists():
+        downloads_dir = Path.home() / "Desktop"
+
+    workspace = Path(loop.session.workspace_root)
+    reports_dir = workspace / "reports"
+
+    candidates = []
+    if target_file:
+        p = workspace / target_file
+        if not p.exists() and reports_dir.exists():
+            p = reports_dir / target_file
+        if p.exists():
+            candidates.append(p)
+        else:
+            console.print(f"[bold red]File not found:[/bold red] '{target_file}' in workspace or reports/")
+            return
+    else:
+        # Auto-pick newest markdown report in reports/
+        if reports_dir.exists():
+            md_files = sorted(reports_dir.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True)
+            if md_files:
+                candidates.append(md_files[0])
+
+        bib = workspace / "references.bib"
+        if bib.exists():
+            candidates.append(bib)
+
+    if not candidates:
+        console.print("[yellow]No research reports found in workspace to download yet.[/yellow]")
+        console.print("[dim]Run a research prompt to generate a report, then use /download.[/dim]\n")
+        return
+
+    copied_files = []
+    for src in candidates:
+        dst = downloads_dir / src.name
+        try:
+            shutil.copy2(src, dst)
+            copied_files.append((src.name, str(dst)))
+        except Exception as e:
+            console.print(f"[red]Failed to copy {src.name}: {e}[/red]")
+
+    if copied_files:
+        box_text = "[bold green]✔ Download Complete — Deliverables Copied to Laptop Downloads Folder:[/bold green]\n"
+        for name, dst in copied_files:
+            box_text += f"\n  📥 [bold white]{name}[/bold white] ➔ [bold cyan]{dst}[/bold cyan]"
+        box_text += f"\n\n[dim]Original files remain safely preserved in: {reports_dir}[/dim]"
+
+        console.print(
+            Panel(
+                box_text,
+                title="[bold green]DOWNLOADED TO LAPTOP[/bold green]",
+                border_style="green",
+                padding=(0, 2),
+            )
+        )

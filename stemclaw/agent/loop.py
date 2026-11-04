@@ -61,18 +61,23 @@ class AgentLoop:
 
         final_content = ""
         current_round = 0
+        last_tools_executed = []
 
         while current_round < max_tool_rounds:
             current_round += 1
             content_accumulator = []
             pending_tool_calls: list[ToolCall] = []
 
-            # 1. Stream response or tool call from model
+            # 1. Dynamic, colorful speaker label based on real-time task state
             if is_verbose:
                 if current_round == 1:
-                    console.print(f"\n[bold cyan]StemClaw ({self.adapter.model_name})[/bold cyan]: ", end="")
+                    console.print(f"\n[bold bright_cyan]StemClaw[/bold bright_cyan] [bold bright_magenta](Thinking & Planning...)[/bold bright_magenta]: ", end="")
+                elif any("write" in t for t in last_tools_executed):
+                    console.print(f"\n[bold bright_cyan]StemClaw[/bold bright_cyan] [bold green](Writing Report Deliverables...)[/bold green]: ", end="")
+                elif any(x in str(last_tools_executed) for x in ("search", "fetch", "crossref", "pubmed", "biorxiv", "arxiv")):
+                    console.print(f"\n[bold bright_cyan]StemClaw[/bold bright_cyan] [bold bright_blue](Analyzing Evidence & Working...)[/bold bright_blue]: ", end="")
                 else:
-                    console.print(f"\n[bold cyan]StemClaw (Synthesis)[/bold cyan]: ", end="")
+                    console.print(f"\n[bold bright_cyan]StemClaw[/bold bright_cyan] [bold bright_yellow](Synthesizing & Cross-Checking...)[/bold bright_yellow]: ", end="")
 
             for chunk in self.adapter.generate_stream(
                 self.history.get_messages(), tools=tools
@@ -111,11 +116,29 @@ class AgentLoop:
                         workspace_root=self.session.workspace_root,
                     )
 
+                # Format arguments cleanly so massive files don't flood the terminal
+                if call.name == "file_write":
+                    fp = call.arguments.get("file_path", "")
+                    content_val = str(call.arguments.get("content", ""))
+                    content_len = len(content_val)
+                    preview = content_val[:70].replace("\n", " ").strip()
+                    arg_display = f"file_path='{fp}' (content: {content_len:,} characters — '{preview}...' written to disk)"
+                elif call.name == "export_bibtex":
+                    title = call.arguments.get("title", "")
+                    year = call.arguments.get("year", "")
+                    arg_display = f"title='{title}' ({year})"
+                else:
+                    raw = call.raw_arguments or str(call.arguments)
+                    if len(raw) > 280:
+                        arg_display = raw[:280] + f"... [truncated {len(raw) - 280} chars]"
+                    else:
+                        arg_display = raw
+
                 if is_verbose:
                     console.print(
                         Panel(
                             f"[bold yellow]Executing Tool:[/bold yellow] [bold cyan]{call.name}[/bold cyan]\n"
-                            f"[dim]Arguments: {call.raw_arguments or call.arguments}[/dim]",
+                            f"[dim]Arguments: {arg_display}[/dim]",
                             border_style="yellow",
                             padding=(0, 2),
                         )
@@ -141,10 +164,12 @@ class AgentLoop:
                 # Append tool output to history
                 self.history.add_tool_result(result)
 
+            last_tools_executed = [c.name for c in pending_tool_calls]
+
         # Guaranteed Final Synthesis: If max rounds reached or final_content is empty, force synthesis
         if not final_content:
             if is_verbose:
-                console.print("\n[bold cyan]StemClaw (Final Synthesis)[/bold cyan]: ", end="")
+                console.print("\n[bold bright_cyan]StemClaw[/bold bright_cyan] [bold bright_green](Executive Summary & Findings)[/bold bright_green]: ", end="")
             forced_msgs = self.history.get_messages() + [
                 {
                     "role": "user",
@@ -185,7 +210,7 @@ class AgentLoop:
                 deliverables_text += f"\n  📄 [bold white]Report File:[/bold white] [bold cyan]{r}[/bold cyan]"
             if has_bib:
                 deliverables_text += "\n  📚 [bold white]Bibliography:[/bold white] [bold cyan]references.bib[/bold cyan]"
-            deliverables_text += "\n\n[dim]You can open and read the markdown report directly in your IDE or text editor.[/dim]"
+            deliverables_text += "\n\n[dim]You can open and read the markdown report directly in your IDE or text editor.[/dim]\n[dim]💡 Tip: Type [/dim][bold cyan]/download[/bold cyan][dim] to copy this report directly to your laptop's Downloads folder![/dim]"
 
             console.print(
                 Panel(
