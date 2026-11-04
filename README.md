@@ -28,7 +28,7 @@
 - **🌊 Long-Horizon Deep Research Engine (`/deep [goal]`)**:
   - Autonomous multi-epoch exploration running across minutes to hours.
   - Dynamically formulates hypotheses, executes targeted literature searches, extracts quantitative evidence into an Evidence Locker, and compiles publication-ready markdown (`report.md`), LaTeX (`research_paper.tex`), and BibTeX (`references.bib`) drafts.
-- **🌐 29+ Live Scientific Endpoints**: Direct, unmocked integrations with NCBI/PubMed, bioRxiv, Europe PMC, UniProt, ChEMBL, PubChem, arXiv, Semantic Scholar, Crossref, OpenAlex, Unpaywall, GitHub, CORE, GBIF, USGS, NASA, and NOAA.
+- **🌐 29+ Live Scientific Endpoints**: Direct real integrations with NCBI/PubMed, bioRxiv, Europe PMC, UniProt, ChEMBL, PubChem, arXiv, Semantic Scholar, Crossref, OpenAlex, Unpaywall, GitHub, CORE, GBIF, USGS, NASA, and NOAA.
 - **🔄 Cross-Category Tool Discovery**: Domain-specific tools can be cross-called seamlessly (e.g., querying ChEMBL from Life Sciences, or querying arXiv from Computer Science).
 - **📚 Deterministic Citation Manager**:
   - `export_bibtex`: Appends standardized BibTeX entries with deterministic citekeys (`@article{vaswani2017attention}`).
