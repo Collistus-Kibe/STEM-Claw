@@ -89,10 +89,27 @@ def handle_slash_command(command_line: str, loop: "AgentLoop") -> bool:
     elif cmd in ("/exit", "/quit", "/q"):
         console.print("[dim]Session closed.[/dim]")
         sys.exit(0)
+    elif cmd in ("/chats", "/history"):
+        _cmd_chats(loop, arg1, arg2)
+        return True
+    elif cmd in ("/memory", "/scratchpad"):
+        _cmd_memory(loop, arg1, arg2)
+        return True
     elif cmd in ("/reload", "/restart"):
-        console.print("[bold green]✔ Reloading StemClaw in-place...[/bold green]\n")
+        console.print("[bold green]✔ Saving chat state and reloading in-place...[/bold green]\n")
+        try:
+            from stemclaw.agent.chat_store import get_chat_store
+            chat_store = get_chat_store()
+            cat_val = loop.session.category.value if hasattr(loop.session.category, "value") else str(loop.session.category)
+            chat_store.save_last_snapshot(
+                session_id=loop.session.session_id,
+                category=cat_val,
+                messages=loop.history.get_messages(compact=False),
+            )
+        except Exception:
+            pass
         import os
-        os.execv(sys.executable, [sys.executable, "-m", "stemclaw"] + sys.argv[1:])
+        os.execv(sys.executable, [sys.executable, "-m", "stemclaw", "--resume-last"])
     else:
         console.print(f"[yellow]Unknown command: '{cmd}'. Type [bold]/help[/bold] to see available commands.[/yellow]")
         return True
@@ -120,7 +137,10 @@ def _cmd_help(loop: "AgentLoop") -> None:
     table.add_row("/clear", "Reset conversation history while preserving category loadout")
     table.add_row("/status", "Display session ID, active tools, repos, and API keys")
     table.add_row("/keys [set <NAME>]", "View or configure Meta & external free API keys (masked input)")
-    table.add_row("exit / quit / q", "Close the research session and return to shell")
+    table.add_row("/chats [load <id>]", "List past research sessions or resume previous chats")
+    table.add_row("/memory [clear]", "Inspect persistent research scratchpad memory")
+    table.add_row("/reload", "Hot-restart StemClaw in-place and restore active chat")
+    table.add_row("/exit, exit, q", "Close the research session and return to shell")
 
     console.print(table)
 
@@ -473,3 +493,92 @@ def _cmd_keys(loop: "AgentLoop", action: str = "", key_name: str = "") -> None:
         console.print(f"[yellow]Unknown keys command '{action}'. Type /keys to see table or /keys set <NAME> to configure.[/yellow]")
 
 
+
+
+def _cmd_chats(loop: "AgentLoop", subcmd: str, session_id: str) -> None:
+    """Manage and inspect past conversation sessions."""
+    from stemclaw.agent.chat_store import get_chat_store
+    store = get_chat_store()
+    action = (subcmd or "").lower().strip()
+
+    if action == "load" and session_id:
+        turns = store.get_session_turns(session_id)
+        if not turns:
+            console.print(f"[bold red]No past conversation found for session ID:[/bold red] '{session_id}'")
+            return
+        restored = []
+        for t in turns:
+            restored.append({"role": "user", "content": t["user_query"]})
+            if t.get("assistant_response"):
+                restored.append({"role": "assistant", "content": t["assistant_response"]})
+        loop.history.restore_messages(restored)
+        console.print(f"[bold green]✔ Restored {len(turns)} turns from session [{session_id}][/bold green]")
+        return
+
+    if action == "view" and session_id:
+        turns = store.get_session_turns(session_id)
+        if not turns:
+            console.print(f"[bold red]No records found for session ID:[/bold red] '{session_id}'")
+            return
+        console.print(f"\n[bold cyan]=== Transcript for Session {session_id} ===[/bold cyan]\n")
+        for t in turns:
+            console.print(f"[bold yellow]User:[/bold yellow] {t['user_query']}")
+            if t.get("assistant_response"):
+                console.print(f"[bold green]StemClaw:[/bold green] {t['assistant_response']}\n")
+        return
+
+    sessions = store.list_sessions(limit=10)
+    if not sessions:
+        console.print("[dim]No past research chats recorded yet.[/dim]")
+        return
+
+    table = Table(
+        show_header=True,
+        header_style="bold cyan on navy_blue",
+        title="Past StemClaw Research Sessions",
+        expand=True,
+    )
+    table.add_column("Session ID", style="bold yellow", width=18)
+    table.add_column("Category", style="cyan", width=18)
+    table.add_column("First Query / Topic", style="white")
+    table.add_column("Turns", justify="right", width=7)
+    table.add_column("Last Active", style="dim", width=19)
+
+    for s in sessions:
+        table.add_row(
+            s["session_id"][:16] + "...",
+            s["category"],
+            s["title"],
+            str(s["turn_count"]),
+            s["last_active_at"][:19].replace("T", " "),
+        )
+
+    console.print(table)
+    console.print("[dim]Tip: Use '/chats load <session_id>' to resume any past chat session![/dim]\n")
+
+
+def _cmd_memory(loop: "AgentLoop", subcmd: str, content: str = "") -> None:
+    """Inspect and manage the persistent research scratchpad."""
+    from stemclaw.agent.scratchpad import get_scratchpad
+    pad = get_scratchpad()
+    action = (subcmd or "").lower().strip()
+
+    if action == "clear":
+        pad.clear()
+        console.print("[bold green]✔ Research scratchpad memory cleared.[/bold green]")
+        return
+
+    if action == "add" and content:
+        pad.add_finding(content)
+        console.print(f"[bold green]✔ Added to scratchpad memory:[/bold green] {content}")
+        return
+
+    console.print(
+        Panel(
+            pad.format_summary(),
+            title="[bold cyan]Persistent Research Scratchpad Memory[/bold cyan]",
+            border_style="cyan",
+            padding=(0, 2),
+        )
+    )
+    console.print("[dim]Tip: The agent automatically records findings here. Use '/memory clear' to reset.[/dim]\n")

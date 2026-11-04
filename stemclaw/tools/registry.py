@@ -14,6 +14,8 @@ from stemclaw.tools.builtins import (
     FileWriteTool,
     FormatCitationTool,
     ListDirectoryTool,
+    MemoryReadTool,
+    MemorySaveTool,
     PythonEvalTool,
     SearchLocalPapersTool,
     SuggestRepoTool,
@@ -142,6 +144,8 @@ class ToolRegistry:
         reg.register(PythonEvalTool())
         reg.register(DatasetInspectTool())
         reg.register(SearchLocalPapersTool())
+        reg.register(MemorySaveTool())
+        reg.register(MemoryReadTool())
 
         # Category 1: Life Sciences
         if category == STEMCategory.LIFE_SCIENCES:

@@ -1,6 +1,7 @@
-"""Conversation history management with token and role preservation."""
+"""Conversation history management with token preservation and smart tool compaction."""
 
 from typing import Any, Dict, List, Optional
+from stemclaw.agent.compactor import compact_messages_for_llm
 from stemclaw.tools.base import ToolCall, ToolResult
 
 
@@ -43,9 +44,12 @@ class ConversationHistory:
         """Add tool execution output turn."""
         self._messages.append(result.to_message())
 
-    def get_messages(self) -> List[Dict[str, Any]]:
-        """Return the current message list for model consumption."""
-        return list(self._messages)
+    def get_messages(self, compact: bool = True) -> List[Dict[str, Any]]:
+        """Return the current message list for model consumption, with optional tool output compaction."""
+        raw = list(self._messages)
+        if compact:
+            return compact_messages_for_llm(raw)
+        return raw
 
     def count(self) -> int:
         return len(self._messages)
@@ -60,4 +64,15 @@ class ConversationHistory:
             system = self._messages[0]
             recent = self._messages[-(max_turns - 1) :]
             self._messages = [system] + recent
+
+    def restore_messages(self, messages: List[Dict[str, Any]]) -> None:
+        """Restore message history from a previous session snapshot."""
+        if not messages:
+            return
+        # Ensure system prompt is first message
+        if messages[0].get("role") == "system":
+            self._messages = list(messages)
+            self.system_prompt = messages[0].get("content", self.system_prompt)
+        else:
+            self._messages = [{"role": "system", "content": self.system_prompt}] + list(messages)
 

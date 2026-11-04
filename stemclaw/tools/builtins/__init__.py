@@ -6,6 +6,7 @@ from stemclaw.tools.builtins.file_ops import FileReadTool, FileWriteTool, ListDi
 from stemclaw.tools.builtins.paper_cache import SearchLocalPapersTool
 from stemclaw.tools.builtins.python_eval import PythonEvalTool
 from stemclaw.tools.builtins.repos import SuggestRepoTool
+from stemclaw.tools.builtins.scratchpad import MemoryReadTool, MemorySaveTool
 from stemclaw.tools.builtins.skills import ActivateSkillTool
 
 __all__ = [
@@ -19,5 +20,7 @@ __all__ = [
     "PythonEvalTool",
     "DatasetInspectTool",
     "SearchLocalPapersTool",
+    "MemorySaveTool",
+    "MemoryReadTool",
 ]
 

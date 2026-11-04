@@ -141,13 +141,34 @@ class AgentLoop:
                 # Append tool output to history
                 self.history.add_tool_result(result)
 
+        # Record turn in persistent chat store and snapshot for /reload
+        try:
+            from stemclaw.agent.chat_store import get_chat_store
+            chat_store = get_chat_store()
+            chat_store.record_turn(
+                session_id=self.session.session_id,
+                category=self.session.category_name,
+                turn_index=self.history.count(),
+                user_query=user_input,
+                assistant_response=final_content,
+            )
+            cat_val = self.session.category.value if hasattr(self.session.category, "value") else str(self.session.category)
+            chat_store.save_last_snapshot(
+                session_id=self.session.session_id,
+                category=cat_val,
+                messages=self.history.get_messages(compact=False),
+            )
+            self.history.trim(max_turns=30)
+        except Exception:
+            pass
+
         return final_content
 
     def interactive_repl(self) -> None:
         """Run the interactive terminal REPL."""
         from stemclaw.agent.commands import handle_slash_command
 
-        first_turn = True
+        first_turn = (self.history.count() <= 1)
         while True:
             category_name = self.session.category_name
             code = self.session.category_code

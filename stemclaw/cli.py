@@ -235,6 +235,11 @@ def main(argv: Optional[list] = None) -> int:
         help="Initialize session and exit without launching REPL loop",
     )
     parser.add_argument(
+        "--resume-last",
+        action="store_true",
+        help="Instantly resume previous in-flight chat session (used by /reload)",
+    )
+    parser.add_argument(
         "-v",
         "--version",
         action="version",
@@ -246,13 +251,24 @@ def main(argv: Optional[list] = None) -> int:
     if args.status:
         return show_status()
 
-    session = launch_m1(category_arg=args.category, reset=args.reset)
+    restored_msgs = []
+    if args.resume_last:
+        from stemclaw.agent.chat_store import get_chat_store
+        snapshot = get_chat_store().load_last_snapshot()
+        if snapshot:
+            saved_cat = snapshot.get("category")
+            restored_msgs = snapshot.get("messages", [])
+            session = launch_m1(category_arg=saved_cat or args.category, reset=args.reset)
+        else:
+            session = launch_m1(category_arg=args.category, reset=args.reset)
+    else:
+        session = launch_m1(category_arg=args.category, reset=args.reset)
 
     if args.no_repl:
         return 0
 
     # Prompt for live Meta Model API key with smart [y/n] and masked input
-    interactive = (not args.query and not args.no_repl)
+    interactive = (not args.query and not args.no_repl and not args.resume_last)
     if not args.mock:
         check_and_prompt_keys(session, interactive=interactive)
 
@@ -261,6 +277,10 @@ def main(argv: Optional[list] = None) -> int:
 
     adapter = get_model_adapter(force_mock=args.mock)
     loop = AgentLoop(session=session, adapter=adapter)
+
+    if restored_msgs:
+        loop.history.restore_messages(restored_msgs)
+        console.print(f"[bold green]✔ In-place reload complete! Restored {len(restored_msgs)} messages from active chat.[/bold green]\n")
 
     # 1. Resume existing deep research task if requested
     if args.resume:
