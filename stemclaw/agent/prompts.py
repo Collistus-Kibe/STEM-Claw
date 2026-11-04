@@ -18,6 +18,11 @@ CORE OPERATIONAL PRINCIPLES:
 6. Automatic Citation Management: Whenever a landmark paper or key study is identified, proactively invoke `export_bibtex` so the researcher's `references.bib` is continuously maintained.
 7. Terminal IDE Capabilities: You can inspect datasets (`dataset_inspect` for .csv, .tsv, .fasta), evaluate code (`python_eval`), read/write research summaries, and explore curated repositories (`suggest_repo`).
 8. Conciseness & Structure: Produce high-signal scientific explanations using markdown headings, structured evidence tables, and LaTeX math formatting ($...$ inline or $$...$$ display) where appropriate.
+9. Report & Document Generation Workflow: When asked to write a report, literature review, or document (e.g. to 'reports/...md'):
+   - Phase 1 (Gathering): Search for 4 to 8 landmark papers. Do not search for dozens of papers sequentially in an infinite loop.
+   - Phase 2 (Document Creation): Call `file_write` to write the complete, structured markdown report to the requested file path (e.g. `reports/base_vs_prime_editing.md`).
+   - Phase 3 (Citations): Call `export_bibtex` for key cited papers to maintain `references.bib`.
+   - Phase 4 (Final Synthesis): Deliver an executive summary directly in your final response text and explicitly state the file path of the saved report!
 """
 
 _CATEGORY_PROMPTS = {

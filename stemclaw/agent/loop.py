@@ -52,7 +52,7 @@ class AgentLoop:
         self,
         user_input: str,
         verbose: Optional[bool] = None,
-        max_tool_rounds: int = 8,
+        max_tool_rounds: int = 25,
     ) -> str:
         """Execute an agent interaction turn with multi-step autonomous tool execution support."""
         is_verbose = self.verbose if verbose is None else verbose
@@ -140,6 +140,61 @@ class AgentLoop:
 
                 # Append tool output to history
                 self.history.add_tool_result(result)
+
+        # Guaranteed Final Synthesis: If max rounds reached or final_content is empty, force synthesis
+        if not final_content:
+            if is_verbose:
+                console.print("\n[bold cyan]StemClaw (Final Synthesis)[/bold cyan]: ", end="")
+            forced_msgs = self.history.get_messages() + [
+                {
+                    "role": "user",
+                    "content": "Synthesize your research findings now. Summarize the literature in clear structured paragraphs, state the conclusions, and confirm any files written.",
+                }
+            ]
+            synth_accumulator = []
+            for chunk in self.adapter.generate_stream(forced_msgs, tools=tools):
+                if chunk.text_delta:
+                    if is_verbose:
+                        console.print(chunk.text_delta, end="")
+                    synth_accumulator.append(chunk.text_delta)
+                if chunk.tool_calls:
+                    for tc in chunk.tool_calls:
+                        res = self.registry.execute_call(tc)
+                        self.history.add_tool_result(res)
+            if is_verbose:
+                console.print()
+            final_content = "".join(synth_accumulator)
+            if final_content:
+                self.history.add_assistant_message(final_content)
+
+        # Prominently display deliverables summary box
+        from pathlib import Path
+        root = Path(self.session.workspace_root)
+        reports_dir = root / "reports"
+        found_reports = []
+        if reports_dir.exists():
+            for p in sorted(reports_dir.glob("*.md")):
+                found_reports.append(str(p.relative_to(root)))
+
+        bib_file = root / "references.bib"
+        has_bib = bib_file.exists()
+
+        if is_verbose and (found_reports or has_bib):
+            deliverables_text = "[bold green]✔ Research Deliverables Generated:[/bold green]\n"
+            for r in found_reports:
+                deliverables_text += f"\n  📄 [bold white]Report File:[/bold white] [bold cyan]{r}[/bold cyan]"
+            if has_bib:
+                deliverables_text += "\n  📚 [bold white]Bibliography:[/bold white] [bold cyan]references.bib[/bold cyan]"
+            deliverables_text += "\n\n[dim]You can open and read the markdown report directly in your IDE or text editor.[/dim]"
+
+            console.print(
+                Panel(
+                    deliverables_text,
+                    title="[bold green]RESEARCH COMPLETE[/bold green]",
+                    border_style="green",
+                    padding=(0, 2),
+                )
+            )
 
         # Record turn in persistent chat store and snapshot for /reload
         try:
